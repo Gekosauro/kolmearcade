@@ -114,42 +114,30 @@
   </div>
 
   <script>
-  const JSON_URL = "https://script.google.com/a/macros/kolme.it/s/AKfycbzWSJgkpbeQrCHA6mMvP5Y5q3BQJL6ISMYllqdZtLcxA_ovI0Y_XFsvXBdfDRknlaP-/exec";
-  const COVER_PATH = "./Covers/";
+    const JSON_URL = "https://script.google.com/a/macros/kolme.it/s/AKfycbzWSJgkpbeQrCHA6mMvP5Y5q3BQJL6ISMYllqdZtLcxA_ovI0Y_XFsvXBdfDRknlaP-/exec";
+    const COVER_PATH = "./Covers/";
 
-  function normalizeName(name) {
-    return name.trim()
-      .replace(/\s+/g, '_')
-      .replace(/[àáâãäå]/g, 'a')
-      .replace(/[èéêë]/g, 'e')
-      .replace(/[ìíîï]/g, 'i')
-      .replace(/[òóôõö]/g, 'o')
-      .replace(/[ùúûü]/g, 'u');
-  }
+    function normalizeName(name) {
+      return name.trim().replace(/\s+/g, '_').toLowerCase()
+        .replace(/[àáâãäå]/g, 'a')
+        .replace(/[èéêë]/g, 'e')
+        .replace(/[ìíîï]/g, 'i')
+        .replace(/[òóôõö]/g, 'o')
+        .replace(/[ùúûü]/g, 'u');
+    }
 
-  function fetchJSON() {
-    fetch(JSON_URL)
-      .then(r => r.json())
-      .then(data => {
-        console.log("✅ Dati ricevuti:", data);
-        if (!Array.isArray(data) || data.length === 0) {
-          console.error("Nessun dato disponibile dal JSON");
-          return;
-        }
+    async function fetchData() {
+      try {
+        const response = await fetch(JSON_URL);
+        const data = await response.json();
 
-        const lastRow = data[data.length - 1];
-        console.log("ℹ️ Ultima riga:", lastRow);
+        if (!Array.isArray(data) || data.length === 0) return;
 
-        const lastGame = lastRow["SELEZIONA IL GIOCO"]?.trim();
-        if (!lastGame) {
-          console.error("Ultima riga senza campo gioco valido.");
-          return;
-        }
+        const last = data[data.length - 1];
+        const gameName = last["SELEZIONA IL GIOCO"]?.trim();
+        const normalizedGame = normalizeName(gameName);
 
-        const normalizedGame = normalizeName(lastGame);
-
-        const filtered = data
-          .filter(r => r["SELEZIONA IL GIOCO"]?.trim() === lastGame)
+        const filtered = data.filter(r => r["SELEZIONA IL GIOCO"]?.trim() === gameName)
           .map(r => ({
             nickname: r["INSERISCI IL TUO NICKNAME"] || "-",
             punteggio: parseInt(r["INSERISCI IL PUNTEGGIO"]) || "-",
@@ -162,50 +150,48 @@
           filtered.push({ nickname: "-", punteggio: "-", timestamp: "-" });
         }
 
-        console.log("📊 Classifica generata:", filtered);
-
         renderCover(normalizedGame);
         renderScores(filtered);
-      })
-      .catch(err => console.error("Errore fetch JSON:", err));
-  }
+      } catch (error) {
+        console.error("Errore fetch JSON:", error);
+      }
+    }
 
-  function renderCover(gameName) {
-    const container = document.getElementById('cover-container');
-    const img = new Image();
-    img.src = `${COVER_PATH}${gameName}.png`;
-    img.onload = () => {
-      container.innerHTML = '';
-      container.appendChild(img);
-      container.style.backgroundColor = 'black';
-    };
-    img.onerror = () => {
-      console.warn("Cover non trovata per:", gameName);
-      container.innerHTML = '';
-      container.style.backgroundColor = 'yellow';
-    };
-  }
+    function renderCover(gameName) {
+      const container = document.getElementById('cover-container');
+      const img = new Image();
+      img.src = `${COVER_PATH}${gameName}.png`;
+      img.onload = () => {
+        container.innerHTML = '';
+        container.appendChild(img);
+        container.style.backgroundColor = 'black';
+      };
+      img.onerror = () => {
+        container.innerHTML = '';
+        container.style.backgroundColor = 'yellow';
+      };
+    }
 
-  function renderScores(scores) {
-    const table = document.getElementById('scores-table');
-    table.innerHTML = '';
-    scores.forEach((r, i) => {
-      const row = document.createElement('tr');
-      if (i === 0) row.className = 'top';
-      row.innerHTML = `
-        <td>${r.nickname}</td>
-        <td>${r.punteggio}</td>
-        <td>${r.timestamp}</td>
-      `;
-      table.appendChild(row);
-    });
-  }
+    function renderScores(scores) {
+      const table = document.getElementById('scores-table');
+      table.innerHTML = '';
+      scores.forEach((r, i) => {
+        const row = document.createElement('tr');
+        if (i === 0) row.className = 'top';
+        row.innerHTML = `
+          <td>${r.nickname}</td>
+          <td>${r.punteggio}</td>
+          <td>${r.timestamp}</td>
+        `;
+        table.appendChild(row);
+      });
+    }
 
-  fetchJSON();
-  setInterval(fetchJSON, 5000);
-</script>
-
+    fetchData();
+    setInterval(fetchData, 5000); // aggiorna ogni 5 secondi
+  </script>
 </body>
 </html>
+
 
 
