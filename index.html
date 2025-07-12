@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Classifica Arcade</title>
+  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'VT323', monospace;
+      font-size: 32px;
+      color: white;
+      position: relative;
+      z-index: 0;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: -2;
+      background: url('BackgroundNero.png') center/cover no-repeat;
+    }
+    body::after {
+      content: "";
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: -1;
+      background: url('Background.gif') center/cover no-repeat;
+      opacity: 0.3;
+    }
+    .container {
+      display: flex;
+      height: 100vh;
+      padding: 40px;
+      padding-bottom: 140px;
+    }
+    .cover {
+      width: 536px;
+      height: 751px;
+      background-color: yellow;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+    }
+    .cover img {
+      width: 536px;
+      height: 751px;
+    }
+    .scores {
+      flex-grow: 1;
+      padding-left: 40px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 40px;
+    }
+    td {
+      padding: 10px 16px;
+      text-align: left;
+    }
+    td:nth-child(3) {
+      text-align: right;
+    }
+    .top td {
+      background-color: white;
+      color: black;
+    }
+    .footer {
+      position: absolute;
+      bottom: 40px;
+      left: 40px;
+      right: 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+    }
+    .footer img.logo {
+      height: 70px;
+    }
+    .qr-section {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 32px;
+    }
+    .qr-label {
+      font-size: 42px;
+      text-align: right;
+      line-height: 1.1;
+    }
+    .qr-section img.qr {
+      height: 200px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="cover" id="cover-container"></div>
+    <div class="scores">
+      <table id="scores-table"></table>
+    </div>
+  </div>
+  <div class="footer">
+    <img src="LogoKolme.png" alt="Kolme logo" class="logo">
+    <div class="qr-section">
+      <div class="qr-label">REGISTRA<br>IL TUO<br>PUNTEGGIO</div>
+      <img src="QRcode.png" alt="QR code" class="qr">
+    </div>
+  </div>
+
+  <script>
+  const JSON_URL = "https://script.google.com/a/macros/kolme.it/s/AKfycbzWSJgkpbeQrCHA6mMvP5Y5q3BQJL6ISMYllqdZtLcxA_ovI0Y_XFsvXBdfDRknlaP-/exec";
+  const COVER_PATH = "./Covers/";
+
+  function normalizeName(name) {
+    return name.trim()
+      .replace(/\s+/g, '_')
+      .replace(/[àáâãäå]/g, 'a')
+      .replace(/[èéêë]/g, 'e')
+      .replace(/[ìíîï]/g, 'i')
+      .replace(/[òóôõö]/g, 'o')
+      .replace(/[ùúûü]/g, 'u');
+  }
+
+  function fetchJSON() {
+    fetch(JSON_URL)
+      .then(r => r.json())
+      .then(data => {
+        console.log("✅ Dati ricevuti:", data);
+        if (!Array.isArray(data) || data.length === 0) {
+          console.error("Nessun dato disponibile dal JSON");
+          return;
+        }
+
+        const lastRow = data[data.length - 1];
+        console.log("ℹ️ Ultima riga:", lastRow);
+
+        const lastGame = lastRow["SELEZIONA IL GIOCO"]?.trim();
+        if (!lastGame) {
+          console.error("Ultima riga senza campo gioco valido.");
+          return;
+        }
+
+        const normalizedGame = normalizeName(lastGame);
+
+        const filtered = data
+          .filter(r => r["SELEZIONA IL GIOCO"]?.trim() === lastGame)
+          .map(r => ({
+            nickname: r["INSERISCI IL TUO NICKNAME"] || "-",
+            punteggio: parseInt(r["INSERISCI IL PUNTEGGIO"]) || "-",
+            timestamp: r["Submitted At"] || "-"
+          }))
+          .sort((a, b) => parseInt(b.punteggio) - parseInt(a.punteggio))
+          .slice(0, 10);
+
+        while (filtered.length < 10) {
+          filtered.push({ nickname: "-", punteggio: "-", timestamp: "-" });
+        }
+
+        console.log("📊 Classifica generata:", filtered);
+
+        renderCover(normalizedGame);
+        renderScores(filtered);
+      })
+      .catch(err => console.error("Errore fetch JSON:", err));
+  }
+
+  function renderCover(gameName) {
+    const container = document.getElementById('cover-container');
+    const img = new Image();
+    img.src = `${COVER_PATH}${gameName}.png`;
+    img.onload = () => {
+      container.innerHTML = '';
+      container.appendChild(img);
+      container.style.backgroundColor = 'black';
+    };
+    img.onerror = () => {
+      console.warn("Cover non trovata per:", gameName);
+      container.innerHTML = '';
+      container.style.backgroundColor = 'yellow';
+    };
+  }
+
+  function renderScores(scores) {
+    const table = document.getElementById('scores-table');
+    table.innerHTML = '';
+    scores.forEach((r, i) => {
+      const row = document.createElement('tr');
+      if (i === 0) row.className = 'top';
+      row.innerHTML = `
+        <td>${r.nickname}</td>
+        <td>${r.punteggio}</td>
+        <td>${r.timestamp}</td>
+      `;
+      table.appendChild(row);
+    });
+  }
+
+  fetchJSON();
+  setInterval(fetchJSON, 5000);
+</script>
+
+</body>
+</html>
+
+
