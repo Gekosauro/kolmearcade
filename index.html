@@ -1,21 +1,18 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Classifica Arcade</title>
-  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <style>
-    * {
-      box-sizing: border-box;
-    }
-
+    * { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: 'VT323', monospace;
       font-size: 32px;
       color: white;
       position: relative;
-      background-color: black;
     }
 
     body::before {
@@ -40,12 +37,7 @@
       height: 100vh;
       padding: 40px;
       padding-bottom: 140px;
-      opacity: 1;
-      transition: opacity 0.3s ease-in-out;
-    }
-
-    .container.fade-out {
-      opacity: 0;
+      transition: opacity 0.3s steps(10, end);
     }
 
     .cover {
@@ -79,6 +71,7 @@
     td {
       padding: 10px 16px;
       text-align: left;
+      animation: appear 0.5s ease-in;
     }
 
     td:nth-child(3) {
@@ -88,6 +81,11 @@
     .top td {
       background-color: white;
       color: black;
+    }
+
+    @keyframes appear {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     .footer {
@@ -100,9 +98,7 @@
       align-items: end;
     }
 
-    .footer img.logo {
-      height: 70px;
-    }
+    .footer img.logo { height: 70px; }
 
     .qr-section {
       display: flex;
@@ -117,33 +113,7 @@
       line-height: 1.1;
     }
 
-    .qr-section img.qr {
-      height: 200px;
-    }
-
-    tr {
-      opacity: 0;
-      transform: translateX(-40px);
-      animation: slideIn 0.5s ease-out forwards;
-    }
-
-    tr:nth-child(1) { animation-delay: 0.1s; }
-    tr:nth-child(2) { animation-delay: 0.2s; }
-    tr:nth-child(3) { animation-delay: 0.3s; }
-    tr:nth-child(4) { animation-delay: 0.4s; }
-    tr:nth-child(5) { animation-delay: 0.5s; }
-    tr:nth-child(6) { animation-delay: 0.6s; }
-    tr:nth-child(7) { animation-delay: 0.7s; }
-    tr:nth-child(8) { animation-delay: 0.8s; }
-    tr:nth-child(9) { animation-delay: 0.9s; }
-    tr:nth-child(10) { animation-delay: 1s; }
-
-    @keyframes slideIn {
-      to {
-        opacity: 1;
-        transform: translateX(0);
-      }
-    }
+    .qr-section img.qr { height: 200px; }
   </style>
 </head>
 <body>
@@ -153,12 +123,11 @@
       <table id="scores-table"></table>
     </div>
   </div>
-
   <div class="footer">
-    <img src="LogoKolme.png" alt="Kolme logo" class="logo" />
+    <img src="LogoKolme.png" alt="Kolme logo" class="logo">
     <div class="qr-section">
-      <div class="qr-label">REGISTRA<br />IL TUO<br />PUNTEGGIO</div>
-      <img src="QRcode.png" alt="QR code" class="qr" />
+      <div class="qr-label">REGISTRA<br>IL TUO<br>PUNTEGGIO</div>
+      <img src="QRcode.png" alt="QR code" class="qr">
     </div>
   </div>
 
@@ -166,85 +135,110 @@
     const JSON_URL = "https://script.google.com/macros/s/AKfycbyPHn52qerAq81H4A1CeoMINj4ZkN6aKzRBI65Dr6e-dq-8D8lsyrzZQ5QHUvjXlGqk/exec";
     const COVER_PATH = "./Covers/";
 
-    let currentGame = null;
+    let currentGame = "";
 
     function normalizeName(name) {
-      return name.trim().replace(/\s+/g, "_")
-        .replace(/[àáâãäå]/g, 'a').replace(/[èéêë]/g, 'e')
-        .replace(/[ìíîï]/g, 'i').replace(/[òóôõö]/g, 'o')
-        .replace(/[ùúûü]/g, 'u');
+      return name.trim()
+        .replace(/\s+/g, '_')
+        .replace(/[àáâãäå]/g, 'a')
+        .replace(/[èéêë]/g, 'e')
+        .replace(/[ìíîï]/g, 'i')
+        .replace(/[òóôõö]/g, 'o')
+        .replace(/[ùúûü]/g, 'u')
+        .toLowerCase();
     }
 
     async function fetchData() {
       try {
         const res = await fetch(JSON_URL);
         const data = await res.json();
-        if (!Array.isArray(data) || data.length === 0) return;
+        const validRows = data.filter(r =>
+          r["SELEZIONA IL GIOCO"] &&
+          r["INSERISCI IL PUNTEGGIO"] &&
+          !isNaN(parseInt(r["INSERISCI IL PUNTEGGIO"]))
+        );
 
-        const last = data[data.length - 1];
-        const gioco = last.gioco.trim();
-        const normalized = normalizeName(gioco);
+        if (!validRows.length) return;
 
-        // Solo se cambia il gioco, attiva la transizione
-        if (gioco !== currentGame) {
-          currentGame = gioco;
-          document.getElementById("main-container").classList.add("fade-out");
+        const lastValid = validRows[validRows.length - 1];
+        const game = lastValid["SELEZIONA IL GIOCO"];
+        if (!game || normalizeName(game) === normalizeName(currentGame)) return;
 
-          setTimeout(() => {
-            renderCover(normalized);
-            renderScores(data.filter(r => r.gioco.trim() === gioco));
-            document.getElementById("main-container").classList.remove("fade-out");
-          }, 300);
-        } else {
-          renderScores(data.filter(r => r.gioco.trim() === gioco));
+        currentGame = game;
+        const filtered = validRows.filter(r => r["SELEZIONA IL GIOCO"] === game);
+        const sorted = filtered
+          .map(r => ({
+            nickname: r["INSERISCI IL TUO NICKNAME"] || "-",
+            punteggio: parseInt(r["INSERISCI IL PUNTEGGIO"]) || "-",
+            timestamp: formatDate(r["Submitted At"])
+          }))
+          .sort((a, b) => b.punteggio - a.punteggio)
+          .slice(0, 10);
+
+        while (sorted.length < 10) {
+          sorted.push({ nickname: "-", punteggio: "-", timestamp: "-" });
         }
+
+        triggerTransition(() => {
+          renderCover(normalizeName(game));
+          renderScores(sorted);
+        });
+
       } catch (err) {
         console.error("Errore fetch JSON:", err);
       }
     }
 
-    function renderCover(name) {
-      const container = document.getElementById("cover-container");
+    function renderCover(gameName) {
+      const container = document.getElementById('cover-container');
       const img = new Image();
-      img.src = `${COVER_PATH}${name}.png`;
+      img.src = `${COVER_PATH}${gameName}.png`;
       img.onload = () => {
-        container.innerHTML = "";
+        container.innerHTML = '';
         container.appendChild(img);
-        container.style.backgroundColor = "black";
+        container.style.backgroundColor = 'black';
       };
       img.onerror = () => {
-        container.innerHTML = "";
-        container.style.backgroundColor = "yellow";
+        container.innerHTML = '';
+        container.style.backgroundColor = 'yellow';
       };
     }
 
-    function renderScores(rows) {
-      const table = document.getElementById("scores-table");
-      table.innerHTML = "";
-
-      const scores = rows
-        .map(r => ({
-          nickname: r.nickname || "-",
-          punteggio: parseInt(r.punteggio) || 0,
-          timestamp: new Date(r.timestamp).toLocaleString("it-IT")
-        }))
-        .sort((a, b) => b.punteggio - a.punteggio)
-        .slice(0, 10);
-
-      while (scores.length < 10) {
-        scores.push({ nickname: "-", punteggio: "-", timestamp: "-" });
-      }
-
+    function renderScores(scores) {
+      const table = document.getElementById('scores-table');
+      table.innerHTML = '';
       scores.forEach((r, i) => {
-        const tr = document.createElement("tr");
-        if (i === 0) tr.className = "top";
-        tr.innerHTML = `
+        const row = document.createElement('tr');
+        if (i === 0) row.className = 'top';
+        row.innerHTML = `
           <td>${r.nickname}</td>
           <td>${r.punteggio}</td>
           <td>${r.timestamp}</td>
         `;
-        table.appendChild(tr);
+        table.appendChild(row);
       });
+    }
+
+    function formatDate(ts) {
+      if (!ts) return "-";
+      const d = new Date(ts);
+      return d.toLocaleString("it-IT", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      });
+    }
+
+    function triggerTransition(callback) {
+      const el = document.getElementById("main-container");
+      el.style.opacity = "0";
+      setTimeout(() => {
+        callback();
+        el.style.opacity = "1";
+      }, 300);
     }
 
     fetchData();
@@ -252,6 +246,7 @@
   </script>
 </body>
 </html>
+
 
 
 
