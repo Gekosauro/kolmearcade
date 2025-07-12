@@ -5,7 +5,9 @@
   <title>Classifica Arcade</title>
   <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
   <style>
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
     body {
       margin: 0;
       font-family: 'VT323', monospace;
@@ -14,6 +16,8 @@
       position: relative;
       z-index: 0;
     }
+
+    /* Sfondo nero + gif in trasparenza */
     body::before {
       content: "";
       position: fixed;
@@ -21,6 +25,7 @@
       z-index: -2;
       background: url('BackgroundNero.png') center/cover no-repeat;
     }
+
     body::after {
       content: "";
       position: fixed;
@@ -29,6 +34,7 @@
       background: url('Background.gif') center/cover no-repeat;
       opacity: 0.3;
     }
+
     .container {
       display: flex;
       height: 100vh;
@@ -114,36 +120,34 @@
   </div>
 
   <script>
-    const JSON_URL = "https://script.google.com/macros/s/AKfycbxo2EhmTmeV2BwCNK0_nrSPaL5_LBDzCz8qgm0EfRPUu6UOyLxO9KeOuhz3PP4kdS3D/exec";
+    const RAW_URL = "https://script.google.com/macros/s/AKfycbxo2EhmTmeV2BwCNK0_nrSPaL5_LBDzCz8qgm0EfRPUu6UOyLxO9KeOuhz3PP4kdS3D/exec";
+    const JSON_URL = `https://api.allorigins.win/raw?url=${encodeURIComponent(RAW_URL)}`;
     const COVER_PATH = "./Covers/";
 
     function normalizeName(name) {
-      return name.trim().replace(/\s+/g, '_').toLowerCase()
-        .replace(/[àáâãäå]/g, 'a')
-        .replace(/[èéêë]/g, 'e')
-        .replace(/[ìíîï]/g, 'i')
-        .replace(/[òóôõö]/g, 'o')
-        .replace(/[ùúûü]/g, 'u');
+      return name.trim().replace(/\s+/g, '_').replace(/[àáâãäå]/g, 'a').replace(/[èéêë]/g, 'e').replace(/[ìíîï]/g, 'i').replace(/[òóôõö]/g, 'o').replace(/[ùúûü]/g, 'u');
     }
 
     async function fetchData() {
       try {
-        const response = await fetch(JSON_URL);
-        const data = await response.json();
+        const res = await fetch(JSON_URL);
+        const data = await res.json();
 
         if (!Array.isArray(data) || data.length === 0) return;
 
         const last = data[data.length - 1];
-        const gameName = last["SELEZIONA IL GIOCO"]?.trim();
-        const normalizedGame = normalizeName(gameName);
+        const lastGame = last["SELEZIONA IL GIOCO"]?.trim();
+        const normalizedGame = normalizeName(lastGame);
 
-        const filtered = data.filter(r => r["SELEZIONA IL GIOCO"]?.trim() === gameName)
+        const filtered = data
+          .filter(r => r["SELEZIONA IL GIOCO"]?.trim() === lastGame)
           .map(r => ({
             nickname: r["INSERISCI IL TUO NICKNAME"] || "-",
             punteggio: parseInt(r["INSERISCI IL PUNTEGGIO"]) || "-",
             timestamp: r["Submitted At"] || "-"
           }))
           .sort((a, b) => parseInt(b.punteggio) - parseInt(a.punteggio))
+          .reverse()
           .slice(0, 10);
 
         while (filtered.length < 10) {
@@ -152,8 +156,8 @@
 
         renderCover(normalizedGame);
         renderScores(filtered);
-      } catch (error) {
-        console.error("Errore fetch JSON:", error);
+      } catch (err) {
+        console.error("Errore fetch JSON:", err);
       }
     }
 
@@ -188,10 +192,11 @@
     }
 
     fetchData();
-    setInterval(fetchData, 5000); // aggiorna ogni 5 secondi
+    setInterval(fetchData, 10000); // ogni 10 secondi
   </script>
 </body>
 </html>
+
 
 
 
