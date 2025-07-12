@@ -162,7 +162,7 @@
 
         const lastValid = validRows[validRows.length - 1];
         const game = lastValid["SELEZIONA IL GIOCO"];
-        if (!game || normalizeName(game) === normalizeName(currentGame)) return;
+        if (!game || typeof game !== "string" || normalizeName(game) === normalizeName(currentGame)) return;
 
         currentGame = game;
         const filtered = validRows.filter(r => r["SELEZIONA IL GIOCO"] === game);
