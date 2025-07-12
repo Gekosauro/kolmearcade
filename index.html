@@ -133,7 +133,7 @@
 
   <script>
     const JSON_URL = "https://script.google.com/macros/s/AKfycbyPHn52qerAq81H4A1CeoMINj4ZkN6aKzRBI65Dr6e-dq-8D8lsyrzZQ5QHUvjXlGqk/exec";
-    const COVER_PATH = "./Covers/";
+    const COVER_PATH = "Covers/";
 
     let currentGame = "";
 
@@ -190,19 +190,23 @@
     }
 
     function renderCover(gameName) {
-      const container = document.getElementById('cover-container');
-      const img = new Image();
-      img.src = `${COVER_PATH}${gameName}.png`;
-      img.onload = () => {
-        container.innerHTML = '';
-        container.appendChild(img);
-        container.style.backgroundColor = 'black';
-      };
-      img.onerror = () => {
-        container.innerHTML = '';
-        container.style.backgroundColor = 'yellow';
-      };
-    }
+  const container = document.getElementById('cover-container');
+  const img = new Image();
+  const imgPath = `${COVER_PATH}${gameName}.png`;
+
+  console.log("Sto cercando la cover:", imgPath); // 👈 DEBUG
+
+  img.src = imgPath;
+  img.onload = () => {
+    container.innerHTML = '';
+    container.appendChild(img);
+    container.style.backgroundColor = 'black';
+  };
+  img.onerror = () => {
+    container.innerHTML = '';
+    container.style.backgroundColor = 'yellow';
+  };
+}
 
     function renderScores(scores) {
       const table = document.getElementById('scores-table');
