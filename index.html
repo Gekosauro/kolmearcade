@@ -5,9 +5,7 @@
   <title>Classifica Arcade</title>
   <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: 'VT323', monospace;
@@ -17,7 +15,6 @@
       z-index: 0;
     }
 
-    /* Sfondo nero + gif in trasparenza */
     body::before {
       content: "";
       position: fixed;
@@ -41,6 +38,7 @@
       padding: 40px;
       padding-bottom: 140px;
     }
+
     .cover {
       width: 536px;
       height: 751px;
@@ -49,10 +47,12 @@
       align-items: flex-start;
       justify-content: center;
     }
+
     .cover img {
       width: 536px;
       height: 751px;
     }
+
     .scores {
       flex-grow: 1;
       padding-left: 40px;
@@ -60,22 +60,27 @@
       flex-direction: column;
       justify-content: flex-start;
     }
+
     table {
       width: 100%;
       border-collapse: collapse;
       font-size: 40px;
     }
+
     td {
       padding: 10px 16px;
       text-align: left;
     }
+
     td:nth-child(3) {
       text-align: right;
     }
+
     .top td {
       background-color: white;
       color: black;
     }
+
     .footer {
       position: absolute;
       bottom: 40px;
@@ -85,20 +90,24 @@
       justify-content: space-between;
       align-items: end;
     }
+
     .footer img.logo {
       height: 70px;
     }
+
     .qr-section {
       display: flex;
       flex-direction: row;
       align-items: center;
       gap: 32px;
     }
+
     .qr-label {
       font-size: 42px;
       text-align: right;
       line-height: 1.1;
     }
+
     .qr-section img.qr {
       height: 200px;
     }
@@ -120,34 +129,45 @@
   </div>
 
   <script>
-    const RAW_URL = "https://script.google.com/macros/s/AKfycbyPHn52qerAq81H4A1CeoMINj4ZkN6aKzRBI65Dr6e-dq-8D8lsyrzZQ5QHUvjXlGqk/exec";
-    const JSON_URL = `https://api.allorigins.win/raw?url=${encodeURIComponent(RAW_URL)}`;
+    const URL_JSON = "https://script.google.com/macros/s/AKfycbyPHn52qerAq81H4A1CeoMINj4ZkN6aKzRBI65Dr6e-dq-8D8lsyrzZQ5QHUvjXlGqk/exec";
     const COVER_PATH = "./Covers/";
 
     function normalizeName(name) {
-      return name.trim().replace(/\s+/g, '_').replace(/[àáâãäå]/g, 'a').replace(/[èéêë]/g, 'e').replace(/[ìíîï]/g, 'i').replace(/[òóôõö]/g, 'o').replace(/[ùúûü]/g, 'u');
+      return name.trim().replace(/\s+/g, '_').replace(/[àáâãäå]/g, 'a')
+        .replace(/[èéêë]/g, 'e').replace(/[ìíîï]/g, 'i')
+        .replace(/[òóôõö]/g, 'o').replace(/[ùúûü]/g, 'u');
+    }
+
+    function formatDate(isoString) {
+      try {
+        const d = new Date(isoString);
+        const pad = n => n.toString().padStart(2, '0');
+        return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+      } catch {
+        return "-";
+      }
     }
 
     async function fetchData() {
       try {
-        const res = await fetch(JSON_URL);
-        const data = await res.json();
-
+        const response = await fetch(`${URL_JSON}?t=${Date.now()}`);
+        const data = await response.json();
         if (!Array.isArray(data) || data.length === 0) return;
 
         const last = data[data.length - 1];
         const lastGame = last["SELEZIONA IL GIOCO"]?.trim();
+        if (!lastGame) return;
+
         const normalizedGame = normalizeName(lastGame);
 
         const filtered = data
           .filter(r => r["SELEZIONA IL GIOCO"]?.trim() === lastGame)
           .map(r => ({
             nickname: r["INSERISCI IL TUO NICKNAME"] || "-",
-            punteggio: parseInt(r["INSERISCI IL PUNTEGGIO"]) || "-",
-            timestamp: r["Submitted At"] || "-"
+            punteggio: parseInt(r["INSERISCI IL PUNTEGGIO"]) || 0,
+            timestamp: formatDate(r["Submitted At"])
           }))
-          .sort((a, b) => parseInt(b.punteggio) - parseInt(a.punteggio))
-          .reverse()
+          .sort((a, b) => b.punteggio - a.punteggio)
           .slice(0, 10);
 
         while (filtered.length < 10) {
@@ -156,8 +176,8 @@
 
         renderCover(normalizedGame);
         renderScores(filtered);
-      } catch (err) {
-        console.error("Errore fetch JSON:", err);
+      } catch (e) {
+        console.error("Errore fetch JSON:", e);
       }
     }
 
@@ -192,10 +212,11 @@
     }
 
     fetchData();
-    setInterval(fetchData, 10000); // ogni 10 secondi
+    setInterval(fetchData, 5000);
   </script>
 </body>
 </html>
+
 
 
 
