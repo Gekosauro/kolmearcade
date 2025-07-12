@@ -4,8 +4,11 @@
   <meta charset="UTF-8">
   <title>Classifica Arcade</title>
   <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <style>
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
     body {
       margin: 0;
       font-family: 'VT323', monospace;
@@ -15,6 +18,7 @@
       z-index: 0;
     }
 
+    /* Background */
     body::before {
       content: "";
       position: fixed;
@@ -22,7 +26,6 @@
       z-index: -2;
       background: url('BackgroundNero.png') center/cover no-repeat;
     }
-
     body::after {
       content: "";
       position: fixed;
@@ -37,6 +40,7 @@
       height: 100vh;
       padding: 40px;
       padding-bottom: 140px;
+      transition: opacity 0.4s ease;
     }
 
     .cover {
@@ -47,7 +51,6 @@
       align-items: flex-start;
       justify-content: center;
     }
-
     .cover img {
       width: 536px;
       height: 751px;
@@ -71,7 +74,6 @@
       padding: 10px 16px;
       text-align: left;
     }
-
     td:nth-child(3) {
       text-align: right;
     }
@@ -111,15 +113,53 @@
     .qr-section img.qr {
       height: 200px;
     }
+
+    /* ANIMAZIONE righe classifica */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .animate-row {
+      animation: fadeInUp 0.4s ease forwards;
+      opacity: 0;
+    }
+
+    /* TRANSIZIONE glitch */
+    .glitch-transition {
+      animation: glitchOutIn 0.4s ease;
+    }
+
+    @keyframes glitchOutIn {
+      0% {
+        filter: contrast(1) brightness(1);
+        opacity: 1;
+      }
+      50% {
+        filter: contrast(2.5) brightness(3);
+        opacity: 0;
+      }
+      100% {
+        filter: contrast(1) brightness(1);
+        opacity: 1;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="container">
+  <div class="container" id="main-container">
     <div class="cover" id="cover-container"></div>
     <div class="scores">
       <table id="scores-table"></table>
     </div>
   </div>
+
   <div class="footer">
     <img src="LogoKolme.png" alt="Kolme logo" class="logo">
     <div class="qr-section">
@@ -129,55 +169,43 @@
   </div>
 
   <script>
-    const URL_JSON = "https://script.google.com/macros/s/AKfycbye-n6Om5prVYxPXeiglEo8nZU_UOvUrp7RQ_VXAUYbnZHhnRCZJkhT67eitcZcQnR5/exec";
+    const DATA_URL = "https://script.google.com/macros/s/AKfycbyPHn52qerAq81H4A1CeoMINj4ZkN6aKzRBI65Dr6e-dq-8D8lsyrzZQ5QHUvjXlGqk/exec";
     const COVER_PATH = "./Covers/";
+    let lastGame = "";
 
     function normalizeName(name) {
-      return name.trim().replace(/\s+/g, '_').replace(/[àáâãäå]/g, 'a')
-        .replace(/[èéêë]/g, 'e').replace(/[ìíîï]/g, 'i')
-        .replace(/[òóôõö]/g, 'o').replace(/[ùúûü]/g, 'u');
-    }
-
-    function formatDate(isoString) {
-      try {
-        const d = new Date(isoString);
-        const pad = n => n.toString().padStart(2, '0');
-        return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-      } catch {
-        return "-";
-      }
+      return name.trim().replace(/\s+/g, '_').toLowerCase();
     }
 
     async function fetchData() {
       try {
-        const response = await fetch(`${URL_JSON}?t=${Date.now()}`);
-        const data = await response.json();
+        const res = await fetch(DATA_URL);
+        const data = await res.json();
+
         if (!Array.isArray(data) || data.length === 0) return;
 
-        const last = data[data.length - 1];
-        const lastGame = last["SELEZIONA IL GIOCO"]?.trim();
-        if (!lastGame) return;
+        const latest = data[data.length - 1];
+        const currentGame = latest.gioco;
 
-        const normalizedGame = normalizeName(lastGame);
-
-        const filtered = data
-          .filter(r => r["SELEZIONA IL GIOCO"]?.trim() === lastGame)
-          .map(r => ({
-            nickname: r["INSERISCI IL TUO NICKNAME"] || "-",
-            punteggio: parseInt(r["INSERISCI IL PUNTEGGIO"]) || 0,
-            timestamp: formatDate(r["Submitted At"])
-          }))
-          .sort((a, b) => b.punteggio - a.punteggio)
-          .slice(0, 10);
-
-        while (filtered.length < 10) {
-          filtered.push({ nickname: "-", punteggio: "-", timestamp: "-" });
+        if (currentGame !== lastGame) {
+          lastGame = currentGame;
+          const container = document.getElementById('main-container');
+          container.classList.add('glitch-transition');
+          setTimeout(() => {
+            container.classList.remove('glitch-transition');
+          }, 500);
         }
 
-        renderCover(normalizedGame);
-        renderScores(filtered);
-      } catch (e) {
-        console.error("Errore fetch JSON:", e);
+        const filtered = data.filter(r => r.gioco === lastGame);
+        const sorted = filtered.sort((a, b) => b.punteggio - a.punteggio).slice(0, 10);
+        while (sorted.length < 10) {
+          sorted.push({ nickname: "-", punteggio: "-", timestamp: "-" });
+        }
+
+        renderCover(normalizeName(lastGame));
+        renderScores(sorted);
+      } catch (err) {
+        console.error("Errore fetch JSON:", err);
       }
     }
 
@@ -199,9 +227,12 @@
     function renderScores(scores) {
       const table = document.getElementById('scores-table');
       table.innerHTML = '';
+
       scores.forEach((r, i) => {
         const row = document.createElement('tr');
         if (i === 0) row.className = 'top';
+        row.classList.add('animate-row');
+        row.style.animationDelay = `${i * 120}ms`;
         row.innerHTML = `
           <td>${r.nickname}</td>
           <td>${r.punteggio}</td>
@@ -216,6 +247,7 @@
   </script>
 </body>
 </html>
+
 
 
 
