@@ -6,115 +6,184 @@
   <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <style>
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: 'VT323', monospace;
-      font-size: 32px;
-      color: white;
-      position: relative;
-    }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'VT323', monospace;
+    font-size: 32px;
+    color: white;
+    position: relative;
+  }
 
-    body::before {
-      content: "";
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      z-index: -2;
-      background: url('BackgroundNero.png') center/cover no-repeat;
-    }
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: -2;
+    background: url('BackgroundNero.png') center/cover no-repeat;
+  }
 
-    body::after {
-      content: "";
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      z-index: -1;
-      background: url('Background.gif') center/cover no-repeat;
-      opacity: 0.3;
-    }
+  body::after {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: -1;
+    background: url('Background.gif') center/cover no-repeat;
+    opacity: 0.3;
+  }
 
+  .container {
+    display: flex;
+    height: 100vh;
+    padding: 40px;
+    padding-bottom: 140px;
+    transition: opacity 0.3s steps(10, end);
+  }
+
+  .cover {
+    width: 536px;
+    height: 751px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    background-color: transparent;
+  }
+
+  .cover img {
+    width: 536px;
+    height: 751px;
+  }
+
+  .scores {
+    flex-grow: 1;
+    padding-left: 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 40px;
+  }
+
+  td {
+    padding: 10px 16px;
+    text-align: left;
+    animation: appear 0.5s ease-in;
+  }
+
+  td:nth-child(3) {
+    text-align: right;
+  }
+
+  .top td {
+    background-color: white;
+    color: black;
+  }
+
+  @keyframes appear {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .footer {
+    position: absolute;
+    bottom: 40px;
+    left: 40px;
+    right: 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+  }
+
+  .footer img.logo { height: 70px; }
+
+  .qr-section {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 32px;
+  }
+
+  .qr-label {
+    font-size: 42px;
+    text-align: right;
+    line-height: 1.1;
+  }
+
+  .qr-section img.qr { height: 200px; }
+
+  /* ----- RESPONSIVE MOBILE VIEW ----- */
+  @media (max-width: 768px) {
     .container {
-      display: flex;
-      height: 100vh;
-      padding: 40px;
-      padding-bottom: 140px;
-      transition: opacity 0.3s steps(10, end);
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      height: auto;
     }
 
     .cover {
-      width: 536px;
-      height: 751px;
-      background-color: transparent;
-      display: flex;
-      align-items: flex-start;
-      justify-content: center;
+      width: auto;
+      height: auto;
     }
 
     .cover img {
-      width: 536px;
-      height: 751px;
+      width: 100%;
+      height: auto;
     }
 
     .scores {
-      flex-grow: 1;
-      padding-left: 40px;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
+      padding: 20px 0;
+      width: 100%;
     }
 
     table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 40px;
-    }
-
-    td {
-      padding: 10px 16px;
-      text-align: left;
-      animation: appear 0.5s ease-in;
-    }
-
-    td:nth-child(3) {
-      text-align: right;
-    }
-
-    .top td {
-      background-color: white;
-      color: black;
-    }
-
-    @keyframes appear {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
+      font-size: 28px;
     }
 
     .footer {
-      position: absolute;
-      bottom: 40px;
-      left: 40px;
-      right: 40px;
-      display: flex;
-      justify-content: space-between;
-      align-items: end;
+      position: static;
+      flex-direction: column-reverse;
+      align-items: center;
+      gap: 20px;
+      padding-bottom: 40px;
     }
 
-    .footer img.logo { height: 70px; }
+    .footer img.logo {
+      height: 60px;
+    }
 
     .qr-section {
-      display: flex;
-      flex-direction: row;
+      flex-direction: column;
       align-items: center;
-      gap: 32px;
     }
 
     .qr-label {
-      font-size: 42px;
-      text-align: right;
-      line-height: 1.1;
+      display: none;
     }
 
-    .qr-section img.qr { height: 200px; }
-  </style>
+    .qr-section img.qr {
+      display: none;
+    }
+
+    .qr-section::after {
+      content: 'Registra il tuo punteggio';
+      font-size: 28px;
+      color: #ffffff;
+      text-decoration: underline;
+    }
+
+    .qr-section::after {
+      cursor: pointer;
+    }
+
+    .qr-section::after:hover {
+      color: #ccc;
+    }
+  }
+</style>
 </head>
 <body>
   <div class="container" id="main-container">
@@ -125,10 +194,10 @@
   </div>
   <div class="footer">
     <img src="LogoKolme.png" alt="Kolme logo" class="logo">
-    <div class="qr-section">
-      <div class="qr-label">REGISTRA<br>IL TUO<br>PUNTEGGIO</div>
-      <img src="QRcode.png" alt="QR code" class="qr">
-    </div>
+    <div class="qr-section" onclick="window.open('https://form.typeform.com/to/ftjULTxG', '_blank')">
+  <div class="qr-label">REGISTRA<br>IL TUO<br>PUNTEGGIO</div>
+  <img src="QRcode.png" alt="QR code" class="qr">
+</div>
   </div>
 
 <script>
