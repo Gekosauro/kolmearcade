@@ -148,14 +148,22 @@
 
   table {
     font-size: 28px;
+    border-collapse: collapse;
+    width: 100%;
   }
 
   table td {
+    padding: 10px 16px;
+    text-align: left;
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
   }
 
   table tr:last-child td {
     border-bottom: none;
+  }
+
+  td:nth-child(3) {
+    text-align: right;
   }
 
   .footer {
@@ -170,14 +178,15 @@
     height: 60px;
   }
 
-  .qr-section {
-    flex-direction: column;
-    align-items: center;
-  }
-
   .qr-label,
   .qr-section img.qr {
     display: none;
+  }
+
+  .qr-section {
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
   }
 
   .qr-section::after {
@@ -207,10 +216,7 @@
   </div>
   <div class="footer">
     <img src="LogoKolme.png" alt="Kolme logo" class="logo">
-    <div class="qr-section" onclick="window.open('https://form.typeform.com/to/ftjULTxG', '_blank')">
-  <div class="qr-label">REGISTRA<br>IL TUO<br>PUNTEGGIO</div>
-  <img src="QRcode.png" alt="QR code" class="qr">
-</div>
+    <div class="qr-section" onclick="window.open('https://form.typeform.com/to/ftjULTxG', '_blank')"></div>
   </div>
 
 <script>
