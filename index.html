@@ -131,169 +131,166 @@
     </div>
   </div>
 
-  <!-- Le parti CSS e HTML restano identiche alla versione precedente, quindi partiamo dallo script JS -->
 <script>
-  const JSON_URL = "https://script.google.com/macros/s/AKfycbyPHn52qerAq81H4A1CeoMINj4ZkN6aKzRBI65Dr6e-dq-8D8lsyrzZQ5QHUvjXlGqk/exec";
-  const COVER_PATH = "./Covers/";
-  const CYCLE_INTERVAL_MS = 180000; // 3 minuti = 180000 ms
+const JSON_URL = "https://script.google.com/macros/s/AKfycbyPHn52qerAq81H4A1CeoMINj4ZkN6aKzRBI65Dr6e-dq-8D8lsyrzZQ5QHUvjXlGqk/exec";
+const COVER_PATH = "./Covers/";
+const CYCLE_INTERVAL_MS = 30000; // modifca tempo ciclo
 
-  let currentGame = "";
-  let lastToken = "";
-  let history = [];
-  let cycleTimer;
+let currentGame = "";
+let lastToken = "";
+let history = [];
+let cycleTimer = null;
 
-  function normalizeName(name) {
-    return name.trim()
-      .replace(/\s+/g, '_')
-      .replace(/[àáâãäå]/g, 'a')
-      .replace(/[èéêë]/g, 'e')
-      .replace(/[ìíîï]/g, 'i')
-      .replace(/[òóôõö]/g, 'o')
-      .replace(/[ùúûü]/g, 'u')
-      .toLowerCase();
+function normalizeName(name) {
+  return name.trim()
+    .replace(/\s+/g, '_')
+    .replace(/[àáâãäå]/g, 'a')
+    .replace(/[èéêë]/g, 'e')
+    .replace(/[ìíîï]/g, 'i')
+    .replace(/[òóôõö]/g, 'o')
+    .replace(/[ùúûü]/g, 'u')
+    .toLowerCase();
+}
+
+function formatDate(ts) {
+  if (!ts) return "-";
+  const d = new Date(ts);
+  return d.toLocaleString("it-IT", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  });
+}
+
+function triggerTransition(callback) {
+  const el = document.getElementById("main-container");
+  el.style.opacity = "0";
+  setTimeout(() => {
+    callback();
+    el.style.opacity = "1";
+  }, 300);
+}
+
+function renderCover(gameName) {
+  const container = document.getElementById('cover-container');
+  const img = new Image();
+  img.src = `${COVER_PATH}${gameName}.png`;
+  img.onload = () => {
+    container.innerHTML = '';
+    container.appendChild(img);
+    container.style.backgroundColor = 'black';
+  };
+  img.onerror = () => {
+    container.innerHTML = '';
+    container.style.backgroundColor = 'yellow';
+  };
+}
+
+function renderScores(scores) {
+  const table = document.getElementById('scores-table');
+  table.innerHTML = '';
+  scores.forEach((r, i) => {
+    const row = document.createElement('tr');
+    if (i === 0) row.className = 'top';
+    row.innerHTML = `
+      <td>${r.nickname}</td>
+      <td>${r.punteggio}</td>
+      <td>${r.timestamp}</td>
+    `;
+    table.appendChild(row);
+  });
+}
+
+function updateHistory(rows) {
+  const seen = new Set();
+  const recentGames = [];
+
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const game = rows[i]["SELEZIONA IL GIOCO"];
+    if (!seen.has(game)) {
+      seen.add(game);
+      recentGames.push(game);
+    }
   }
 
-  async function fetchData() {
-    try {
-      const res = await fetch(JSON_URL);
-      const data = await res.json();
-      const validRows = data.filter(r =>
-        r["SELEZIONA IL GIOCO"] &&
-        r["INSERISCI IL PUNTEGGIO"] &&
+  history = recentGames;
+}
+
+function showGame(game) {
+  fetch(JSON_URL)
+    .then(res => res.json())
+    .then(data => {
+      const filtered = data.filter(r =>
+        r["SELEZIONA IL GIOCO"] === game &&
         !isNaN(parseInt(r["INSERISCI IL PUNTEGGIO"]))
       );
 
-      if (!validRows.length) return;
+      const sorted = filtered
+        .map(r => ({
+          nickname: r["INSERISCI IL TUO NICKNAME"] || "-",
+          punteggio: parseInt(r["INSERISCI IL PUNTEGGIO"]) || "-",
+          timestamp: formatDate(r["Submitted At"])
+        }))
+        .sort((a, b) => b.punteggio - a.punteggio)
+        .slice(0, 10);
 
-      const lastRow = validRows[validRows.length - 1];
-      const lastGame = lastRow["SELEZIONA IL GIOCO"];
-      const newToken = lastRow["Token"];
-
-      if (newToken !== lastToken) {
-        lastToken = newToken;
-        currentGame = lastGame;
-        updateHistory(validRows);
-        showGame(currentGame);
-        resetCycle();
+      while (sorted.length < 10) {
+        sorted.push({ nickname: "-", punteggio: "-", timestamp: "-" });
       }
-    } catch (err) {
-      console.error("Errore fetch JSON:", err);
-    }
-  }
 
-  function updateHistory(rows) {
-    const seen = new Set();
-    history = [];
-
-    // Scorri dalla fine all'inizio per avere i giochi più recenti per primi
-    for (let i = rows.length - 1; i >= 0; i--) {
-      const game = rows[i]["SELEZIONA IL GIOCO"];
-      if (!seen.has(game)) {
-        seen.add(game);
-        history.push(game);
-      }
-    }
-  }
-
-  function showGame(game) {
-    currentGame = game;
-    fetch(JSON_URL)
-      .then(res => res.json())
-      .then(data => {
-        const valid = data.filter(r =>
-          r["SELEZIONA IL GIOCO"] &&
-          r["INSERISCI IL PUNTEGGIO"] &&
-          !isNaN(parseInt(r["INSERISCI IL PUNTEGGIO"]))
-        );
-        const filtered = valid.filter(r => r["SELEZIONA IL GIOCO"] === game);
-        const sorted = filtered
-          .map(r => ({
-            nickname: r["INSERISCI IL TUO NICKNAME"] || "-",
-            punteggio: parseInt(r["INSERISCI IL PUNTEGGIO"]) || "-",
-            timestamp: formatDate(r["Submitted At"])
-          }))
-          .sort((a, b) => b.punteggio - a.punteggio)
-          .slice(0, 10);
-
-        while (sorted.length < 10) {
-          sorted.push({ nickname: "-", punteggio: "-", timestamp: "-" });
-        }
-
-        triggerTransition(() => {
-          renderCover(normalizeName(game));
-          renderScores(sorted);
-        });
+      triggerTransition(() => {
+        renderCover(normalizeName(game));
+        renderScores(sorted);
+        currentGame = game;
       });
-  }
-
-  function renderCover(gameName) {
-    const container = document.getElementById('cover-container');
-    const img = new Image();
-    img.src = `${COVER_PATH}${gameName}.png`;
-    img.onload = () => {
-      container.innerHTML = '';
-      container.appendChild(img);
-      container.style.backgroundColor = 'black';
-    };
-    img.onerror = () => {
-      container.innerHTML = '';
-      container.style.backgroundColor = 'yellow';
-    };
-  }
-
-  function renderScores(scores) {
-    const table = document.getElementById('scores-table');
-    table.innerHTML = '';
-    scores.forEach((r, i) => {
-      const row = document.createElement('tr');
-      if (i === 0) row.className = 'top';
-      row.innerHTML = `
-        <td>${r.nickname}</td>
-        <td>${r.punteggio}</td>
-        <td>${r.timestamp}</td>
-      `;
-      table.appendChild(row);
     });
-  }
+}
 
-  function formatDate(ts) {
-    if (!ts) return "-";
-    const d = new Date(ts);
-    return d.toLocaleString("it-IT", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit"
-    });
-  }
+function startCycling() {
+  if (cycleTimer) clearInterval(cycleTimer);
+  if (history.length < 2) return; // Serve almeno più di 1 gioco per ciclare
 
-  function triggerTransition(callback) {
-    const el = document.getElementById("main-container");
-    el.style.opacity = "0";
-    setTimeout(() => {
-      callback();
-      el.style.opacity = "1";
-    }, 300);
-  }
-
-  function startCycling() {
-    clearInterval(cycleTimer);
-    cycleTimer = setInterval(() => {
-      const idx = history.indexOf(currentGame);
-      const nextIdx = (idx + 1) % history.length;
+  cycleTimer = setInterval(() => {
+    const idx = history.indexOf(currentGame);
+    const nextIdx = (idx + 1) % history.length;
+    if (history[nextIdx] !== currentGame) {
       showGame(history[nextIdx]);
-    }, CYCLE_INTERVAL_MS);
-  }
+    }
+  }, CYCLE_INTERVAL_MS);
+}
 
-  function resetCycle() {
-    startCycling();
-  }
+async function fetchData() {
+  try {
+    const res = await fetch(JSON_URL);
+    const data = await res.json();
+    const validRows = data.filter(r =>
+      r["SELEZIONA IL GIOCO"] &&
+      r["INSERISCI IL PUNTEGGIO"] &&
+      !isNaN(parseInt(r["INSERISCI IL PUNTEGGIO"]))
+    );
 
-  fetchData();
-  setInterval(fetchData, 5000);
-  startCycling();
+    if (!validRows.length) return;
+
+    const lastRow = validRows[validRows.length - 1];
+    const newToken = lastRow["Token"];
+    const newGame = lastRow["SELEZIONA IL GIOCO"];
+
+    if (newToken !== lastToken) {
+      lastToken = newToken;
+      updateHistory(validRows);
+      showGame(newGame);
+      startCycling();
+    }
+  } catch (err) {
+    console.error("Errore fetch JSON:", err);
+  }
+}
+
+fetchData();
+setInterval(fetchData, 5000);
 </script>
 </body>
 </html>
