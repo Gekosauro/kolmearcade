@@ -131,41 +131,81 @@
     </div>
   </div>
 
-  <script>
-    const JSON_URL = "https://script.google.com/macros/s/AKfycbyPHn52qerAq81H4A1CeoMINj4ZkN6aKzRBI65Dr6e-dq-8D8lsyrzZQ5QHUvjXlGqk/exec";
-    const COVER_PATH = "./Covers/";
+  <!-- Le parti CSS e HTML restano identiche alla versione precedente, quindi partiamo dallo script JS -->
+<script>
+  const JSON_URL = "https://script.google.com/macros/s/AKfycbyPHn52qerAq81H4A1CeoMINj4ZkN6aKzRBI65Dr6e-dq-8D8lsyrzZQ5QHUvjXlGqk/exec";
+  const COVER_PATH = "./Covers/";
+  const CYCLE_INTERVAL_MS = 180000; // 3 minuti = 180000 ms
 
-    let currentGame = "";
+  let currentGame = "";
+  let lastToken = "";
+  let history = [];
+  let cycleTimer;
 
-    function normalizeName(name) {
-      return name.trim()
-        .toLowerCase()
-        .replace(/\s+/g, '_')
-        .replace(/[àáâãäå]/g, 'a')
-        .replace(/[èéêë]/g, 'e')
-        .replace(/[ìíîï]/g, 'i')
-        .replace(/[òóôõö]/g, 'o')
-        .replace(/[ùúûü]/g, 'u');
+  function normalizeName(name) {
+    return name.trim()
+      .replace(/\s+/g, '_')
+      .replace(/[àáâãäå]/g, 'a')
+      .replace(/[èéêë]/g, 'e')
+      .replace(/[ìíîï]/g, 'i')
+      .replace(/[òóôõö]/g, 'o')
+      .replace(/[ùúûü]/g, 'u')
+      .toLowerCase();
+  }
+
+  async function fetchData() {
+    try {
+      const res = await fetch(JSON_URL);
+      const data = await res.json();
+      const validRows = data.filter(r =>
+        r["SELEZIONA IL GIOCO"] &&
+        r["INSERISCI IL PUNTEGGIO"] &&
+        !isNaN(parseInt(r["INSERISCI IL PUNTEGGIO"]))
+      );
+
+      if (!validRows.length) return;
+
+      const lastRow = validRows[validRows.length - 1];
+      const lastGame = lastRow["SELEZIONA IL GIOCO"];
+      const newToken = lastRow["Token"];
+
+      if (newToken !== lastToken) {
+        lastToken = newToken;
+        currentGame = lastGame;
+        updateHistory(validRows);
+        showGame(currentGame);
+        resetCycle();
+      }
+    } catch (err) {
+      console.error("Errore fetch JSON:", err);
     }
+  }
 
-    async function fetchData() {
-      try {
-        const res = await fetch(JSON_URL);
-        const data = await res.json();
-        const validRows = data.filter(r =>
+  function updateHistory(rows) {
+    const seen = new Set();
+    history = [];
+
+    // Scorri dalla fine all'inizio per avere i giochi più recenti per primi
+    for (let i = rows.length - 1; i >= 0; i--) {
+      const game = rows[i]["SELEZIONA IL GIOCO"];
+      if (!seen.has(game)) {
+        seen.add(game);
+        history.push(game);
+      }
+    }
+  }
+
+  function showGame(game) {
+    currentGame = game;
+    fetch(JSON_URL)
+      .then(res => res.json())
+      .then(data => {
+        const valid = data.filter(r =>
           r["SELEZIONA IL GIOCO"] &&
           r["INSERISCI IL PUNTEGGIO"] &&
           !isNaN(parseInt(r["INSERISCI IL PUNTEGGIO"]))
         );
-
-        if (!validRows.length) return;
-
-        const lastValid = validRows[validRows.length - 1];
-        const game = lastValid["SELEZIONA IL GIOCO"];
-        if (!game || typeof game !== "string" || normalizeName(game) === normalizeName(currentGame)) return;
-
-        currentGame = game;
-        const filtered = validRows.filter(r => r["SELEZIONA IL GIOCO"] === game);
+        const filtered = valid.filter(r => r["SELEZIONA IL GIOCO"] === game);
         const sorted = filtered
           .map(r => ({
             nickname: r["INSERISCI IL TUO NICKNAME"] || "-",
@@ -183,67 +223,78 @@
           renderCover(normalizeName(game));
           renderScores(sorted);
         });
-
-      } catch (err) {
-        console.error("Errore fetch JSON:", err);
-      }
-    }
-
-    function renderCover(gameName) {
-      const container = document.getElementById('cover-container');
-      const img = new Image();
-      img.src = `${COVER_PATH}${gameName}.png`;
-      img.onload = () => {
-        container.innerHTML = '';
-        container.appendChild(img);
-        container.style.backgroundColor = 'black';
-      };
-      img.onerror = () => {
-        container.innerHTML = '';
-        container.style.backgroundColor = 'yellow';
-      };
-    }
-
-    function renderScores(scores) {
-      const table = document.getElementById('scores-table');
-      table.innerHTML = '';
-      scores.forEach((r, i) => {
-        const row = document.createElement('tr');
-        if (i === 0) row.className = 'top';
-        row.innerHTML = `
-          <td>${r.nickname}</td>
-          <td>${r.punteggio}</td>
-          <td>${r.timestamp}</td>
-        `;
-        table.appendChild(row);
       });
-    }
+  }
 
-    function formatDate(ts) {
-      if (!ts) return "-";
-      const d = new Date(ts);
-      return d.toLocaleString("it-IT", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit"
-      });
-    }
+  function renderCover(gameName) {
+    const container = document.getElementById('cover-container');
+    const img = new Image();
+    img.src = `${COVER_PATH}${gameName}.png`;
+    img.onload = () => {
+      container.innerHTML = '';
+      container.appendChild(img);
+      container.style.backgroundColor = 'black';
+    };
+    img.onerror = () => {
+      container.innerHTML = '';
+      container.style.backgroundColor = 'yellow';
+    };
+  }
 
-    function triggerTransition(callback) {
-      const el = document.getElementById("main-container");
-      el.style.opacity = "0";
-      setTimeout(() => {
-        callback();
-        el.style.opacity = "1";
-      }, 300);
-    }
+  function renderScores(scores) {
+    const table = document.getElementById('scores-table');
+    table.innerHTML = '';
+    scores.forEach((r, i) => {
+      const row = document.createElement('tr');
+      if (i === 0) row.className = 'top';
+      row.innerHTML = `
+        <td>${r.nickname}</td>
+        <td>${r.punteggio}</td>
+        <td>${r.timestamp}</td>
+      `;
+      table.appendChild(row);
+    });
+  }
 
-    fetchData();
-    setInterval(fetchData, 5000);
-  </script>
+  function formatDate(ts) {
+    if (!ts) return "-";
+    const d = new Date(ts);
+    return d.toLocaleString("it-IT", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit"
+    });
+  }
+
+  function triggerTransition(callback) {
+    const el = document.getElementById("main-container");
+    el.style.opacity = "0";
+    setTimeout(() => {
+      callback();
+      el.style.opacity = "1";
+    }, 300);
+  }
+
+  function startCycling() {
+    clearInterval(cycleTimer);
+    cycleTimer = setInterval(() => {
+      const idx = history.indexOf(currentGame);
+      const nextIdx = (idx + 1) % history.length;
+      showGame(history[nextIdx]);
+    }, CYCLE_INTERVAL_MS);
+  }
+
+  function resetCycle() {
+    startCycling();
+  }
+
+  fetchData();
+  setInterval(fetchData, 5000);
+  startCycling();
+</script>
 </body>
 </html>
 
